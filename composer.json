@@ -1,0 +1,16 @@
+{
+    "name": "nram/abc-algorithm",
+    "description": "Implementation of Artificial Bee Colony Algorithm",
+    "type": "project",
+    "require-dev": {
+        "phpunit/phpunit": "^9.5"
+    },
+    "license": "The MIT License",
+    "authors": [
+        {
+            "name": "Naresh Ram",
+            "email": "nram@aaxiscommerce.com"
+        }
+    ],
+    "require": {}
+}
