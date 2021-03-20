@@ -18,7 +18,8 @@ class BeeColony
     protected $foodSourceConfig = array();  // Need this to create a food source.
     protected $maxFoodSources = 0;          // Max Food Sources
     protected $scoutLimit = 0;              // Limit when Scouts find new sources
-
+    protected $purgeDupes = 0;              // If set to 1, dupes will be purged.
+    
     // Members
     protected $foodSources = array();       // The foodSources currently remembered
     protected $bestFoodSources = array();   // Best foodsources
@@ -39,6 +40,7 @@ class BeeColony
         $this->setPropertyIfNotEmpty($colonyConfig['maxCycles'], 'setMaxCycles')
             ->setPropertyIfNotEmpty($colonyConfig['colonySize'], 'setColonySize')
             ->setPropertyIfNotEmpty($colonyConfig['numSolutions'], 'setNumSolutions')
+            ->setPropertyIfNotEmpty($colonyConfig['purgeDupes'], 'setPurgeDupes')
             ->setFoodSourceConfig($config['FoodSource']);
 
         $dimensions = $config['FoodSource']['dimensions'];
@@ -86,14 +88,20 @@ class BeeColony
             $this->sendScoutBees();             // trial count with new food sources found by scouts
 
             // For graphing
-                    // graph unique food solutions
+            // graph unique food solutions
             foreach ($this->foodSources as $fs) {
+                
                 $fs->logData($cycle);
             }
-            
+            foreach($this->bestFoodSources as $fs) {
+                self::log2file($cycle.",".$fs->getPrintableCSV());
+            }
         }
         
-        self::log2file("Ran for $cycle cycle(s).");
+        self::log2file("\nRan for $cycle cycle(s). Solution follows: \n");
+        foreach($this->bestFoodSources as $fs) {
+            self::log2file($cycle.",".$fs->getPrintableCSV());
+        }
         return $this;
     }
 
@@ -153,6 +161,14 @@ class BeeColony
         if ($maxTrialFs->getTrialCount() > $scountLimit) {
             $newFoodSource = $this->generateNewFoodSource();
             array_splice($this->foodSources, $maxTrialFsNum, 1, [$newFoodSource]);
+        }
+
+        // This is purged dupes logic
+        if ($this->getPurgeDupes()==1) {
+            foreach (range($this->getMaxFoodSources, count($this->foodSources)) as $fsNum) {
+                $newFoodSource = $this->generateNewFoodSource();
+                array_push($this->foodSources, $newFoodSource);
+            }
         }
     }
 
@@ -311,7 +327,9 @@ class BeeColony
         }
         // Deduping. This is extreme. Must subclass.
         
-        //$this->foodSources = $uniqueFoodSources;
+        if ($this->getPurgeDupes()==1)
+            $this->foodSources = $uniqueFoodSources;
+
         // Now the top numsolutions of the array are sorted. Pick those off.
         $this->bestFoodSources = array_slice($uniqueFoodSources, 0, $this->numSolutions);
         foreach ($this->bestFoodSources as $fs) {
@@ -472,5 +490,25 @@ class BeeColony
         }
 
         fwrite(self::$logFile, $message."\n");
+    }
+
+    /**
+     * Get the value of purgeDupes
+     */ 
+    public function getPurgeDupes()
+    {
+        return $this->purgeDupes;
+    }
+
+    /**
+     * Set the value of purgeDupes
+     *
+     * @return  self
+     */ 
+    public function setPurgeDupes($purgeDupes)
+    {
+        $this->purgeDupes = $purgeDupes;
+
+        return $this;
     }
 }

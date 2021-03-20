@@ -38,3 +38,10 @@ Concrete implementation of CrossInTraySource for CrossInTray function
 ### MatchPlayFoodSource
 Solves the MatchPlay Puzzle.
 
+# Visualisation
+Run
+
+<pre>
+php ./NumericalSolnVisualizer.php configCrossInTray.ini  
+gifsicle --loopcount=forever --delay=25 out/crossintray_* --colors 256 > final/crossintray-soln.gif
+</pre>

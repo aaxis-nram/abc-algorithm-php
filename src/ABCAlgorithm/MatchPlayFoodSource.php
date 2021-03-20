@@ -113,6 +113,7 @@ class MatchPlayFoodSource extends AbstractFoodSource
         $this->stackArray = $stackArray;
         
         $config['dimensions'] = $dimensions;
+        
         /*
         $config['upperLimit'] = $upperLimit;
         $config['lowerLimit'] = 0;
