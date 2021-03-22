@@ -10,7 +10,7 @@ if (empty($argv[1])) {
 
 $config = parse_ini_file($argv[1], true);
 
-$visualizer = new MatchPlaySolutionVisualizer($config);
+$visualizer = new RailCarSolutionVisualizer($config);
 
 $logHandle = fopen($config['logFileName'], 'r');
 
@@ -52,7 +52,7 @@ $visualizer->generateGraph($pcount, $solutions);
 fclose($logHandle);
 
 
-class MatchPlaySolutionVisualizer
+class RailCarSolutionVisualizer
 {
 
     //Set the image width and height
