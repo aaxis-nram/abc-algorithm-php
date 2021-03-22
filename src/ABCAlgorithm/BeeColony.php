@@ -165,10 +165,16 @@ class BeeColony
 
         // This is purged dupes logic
         if ($this->getPurgeDupes()==1) {
-            foreach (range($this->getMaxFoodSources, count($this->foodSources)) as $fsNum) {
-                $newFoodSource = $this->generateNewFoodSource();
-                array_push($this->foodSources, $newFoodSource);
+
+
+           //print("-- ".count($this->foodSources) . " - " . $this->getMaxFoodSources() . "\n\n");
+            if (count($this->foodSources) < $this->getMaxFoodSources()) {
+                foreach (range(count($this->foodSources), $this->getMaxFoodSources()) as $fsNum) {
+                    $newFoodSource = $this->generateNewFoodSource();
+                    array_push($this->foodSources, $newFoodSource);
+                }
             }
+
         }
     }
 

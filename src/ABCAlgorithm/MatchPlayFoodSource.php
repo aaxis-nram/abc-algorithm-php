@@ -27,12 +27,17 @@ require_once('AbstractFoodSource.php');
 
 class MatchPlayFoodSource extends AbstractFoodSource
 {
-    private $stackArray = array();
-    private $stackCounts = array();
+    protected static $stackArray = array();
+    protected static $stacksParsed = false;
+    protected static $stackCounts = array();
 
     public function __construct(array $config)
     {   
-        $this->parseStacks($config);
+        if (!self::$stacksParsed) {
+            self::$stacksParsed = true;
+            self::parseStacks($config);
+        }
+
         parent::__construct($config);
 
         // need to handle the board
@@ -48,8 +53,8 @@ class MatchPlayFoodSource extends AbstractFoodSource
     public function functionValue(): float {
         
         // Stack config
-        $stacks = $this->stackArray;
-        $stackCounts = $this->stackCounts;
+        $stacks = self::$stackArray;
+        $stackCounts = self::$stackCounts;
         $dimensions = $this->getDimensions();
         $fsCount = array();
         $fnValue = 0;
@@ -87,14 +92,18 @@ class MatchPlayFoodSource extends AbstractFoodSource
     }
 
 
-    private function parseStacks(&$config)
+    private static function parseStacks(&$config)
     {
         // runs before construct
         $dimensions = 0;
 
         $stackArray = array();
         $upperLimit = 0;
-        foreach ($config['stack'] as $envRow) {
+        
+        
+
+        foreach ($config['stack'] as $t=>$envRow) {
+            
             $splitEnvRow = explode(",", $envRow);
             $dimensions++;
             $row = array();
@@ -105,12 +114,13 @@ class MatchPlayFoodSource extends AbstractFoodSource
                 array_push($cell, ord($splitEnvCell[1]) - ord('1'));
                 array_push($row, $cell);
                 $thisStackCells++;
+
             }
             array_push($stackArray, $row);
             $upperLimit = max($thisStackCells, $upperLimit);
         }
 
-        $this->stackArray = $stackArray;
+        self::$stackArray = $stackArray;
         
         $config['dimensions'] = $dimensions;
         
@@ -119,9 +129,8 @@ class MatchPlayFoodSource extends AbstractFoodSource
         $config['lowerLimit'] = 0;
         */
 
-        $this->stackCounts[0] = explode(",", $config['rCounts']);
-        $this->stackCounts[1] = explode(",", $config['cCounts']);
-
+        self::$stackCounts[0] = explode(",", $config['rCounts']);
+        self::$stackCounts[1] = explode(",", $config['cCounts']);
 
         //print_r($this->stackArray);
     }
@@ -146,7 +155,7 @@ class MatchPlayFoodSource extends AbstractFoodSource
     }
 
     private function getBurnVal($dim) {
-        $stackMax = count($this->stackArray[$dim]);
+        $stackMax = count(self::$stackArray[$dim]);
         $burnVal = min($stackMax, intval((1.0 + $stackMax) * $this->getParameters()[$dim]));
 
         return $burnVal;

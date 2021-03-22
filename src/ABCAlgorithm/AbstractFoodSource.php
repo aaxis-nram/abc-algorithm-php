@@ -384,7 +384,10 @@ abstract class AbstractFoodSource
             if (empty(self::$logFileName)) {
                 self::$logFileName = 'log.csv';
             }
+
+            //echo "---- ".self::$logFileName."---\n";
             self::$logHandle = fopen(self::$logFileName, "w");
+
         }
         fwrite(self::$logHandle, $str."\n");
     }
