@@ -13,11 +13,37 @@ $config = parse_ini_file($argv[1], true);
 $visualizer = new RailCarSolutionVisualizer($config);
 
 $logHandle = fopen($config['logFileName'], 'r');
+$maxObjFnToVis = $config['Visualizer']['maxObjFnToVis'];
 
-$solutions = array();
-$bestSoln = 1000;
-$pcount = 0;
+$solutionsReviewed = array();
 
+$solCount = 0;
+// This generates an empty game board. 
+$visualizer->generateGraph($solCount, null);
+$solCount++;
+
+$dim = $visualizer->dimensions;
+
+
+while (!feof($logHandle)) {
+    $str = fgets($logHandle);
+
+    if (empty($str)) break;
+
+    $solnstr = substr($str, strpos($str,','));
+    
+    if (!array_key_exists($solnstr, $solutionsReviewed)) {
+        $solutionsReviewed[$solnstr] = 1;
+        $arr = explode(",", $str);
+        $objFn = intval($arr[$dim-1]);       
+        if ($objFn <= $maxObjFnToVis) {
+            $visualizer->generateGraph($solCount, $arr);
+            $solCount++;
+        }
+    }
+}
+
+/*
 while (!feof($logHandle)) {
     $str = fgets($logHandle);
 
@@ -47,8 +73,9 @@ while (!feof($logHandle)) {
     $pcount = $count;
 
 }
-$visualizer->generateGraph($pcount, $solutions);
 
+$visualizer->generateGraph($pcount, $solutions);
+*/
 fclose($logHandle);
 
 
@@ -69,7 +96,9 @@ class RailCarSolutionVisualizer
     private $numCount = 0;
     private $stackArray = array();
     private $stackCounts = array();
-    private $dimensions = 0;
+    public $dimensions = 0;
+
+    private $gTableTop = 0;
 
     function __construct(array $config)
     {
@@ -82,7 +111,7 @@ class RailCarSolutionVisualizer
         $this->gHeight    = $config['Visualizer']['gHeight'];
         $this->gridXCount = $config['Visualizer']['gridXCount'];
         $this->gridYCount = $config['Visualizer']['gridYCount'];
-
+        $this->gTableTop = $config['Visualizer']['gTableTop'];
 
         $this->outfilePrefix = $config['Visualizer']['outfilePrefix'];
 //        $this->templateFile  = $config['Visualizer']['templateFile'];
@@ -98,28 +127,87 @@ class RailCarSolutionVisualizer
     {
         global $gX0, $gY0, $gXM, $gYM;
 
-        list($fsCounts, $fnValue) = $this->stackCounts($solutions);
+        if (!empty($solutions)) {
+            list($fsCounts, $fnValue) = $this->stackCounts($solutions);
+        }
 
         $image  = imagecreatetruecolor($this->gWidth, $this->gHeight);
         imagefilledrectangle($image, 0, 0, $this->gWidth, $this->gHeight, 0xFFFFFF);
         
         $colBorder = imagecolorallocate($image, 0,0,0);
         $colGrid   = imagecolorallocate($image, 128,128,128);
-        $colInactive = imageColorallocate($image, 64,64,64);
-        $colActive  = imagecolorallocate($image, 255,128,0);
+        $colInactive = imageColorallocate($image, 208,208,208);
+        $colActive  = imagecolorallocate($image, 128,64,0);
+        $colActiveDot = imagecolorallocate($image, 255,255,255);
         $colError   = imagecolorallocate($image, 255,0,0);
-        $colText    = imagecolorallocate($image, 0,128,0);
+        $colText    = imagecolorallocate($image, 255,255,255);
+        $colTextBg  = imagecolorallocate($image, 0,0,0);
 
         $box = [$this->gLeft, $this->gTop, $this->gRight, $this->gBottom];
+        
+        // tracks
+        $hwidth = 80;
 
-        imagerectangle($image, $box[0], $box[1], $box[2], $box[3], $colBorder);
+        imagefilledrectangle($image, $box[0]-5,$box[1],$box[2]+5, $box[1]+6, $colGrid);
 
-        // X grid
-        $dwidth = ($box[2]-$box[0])/$this->gridXCount;
+        $dwidth = ($box[2]-$box[0])/($this->dimensions-1);
+        foreach (range(0, $this->dimensions-1) as $c) {
+            $x = $box[0] + $c*$dwidth;
+            imagefilledrectangle($image, $x-4, $box[1], $x-3, $box[3], $colGrid);
+            imagefilledrectangle($image, $x+4, $box[1], $x+3, $box[3], $colGrid);
+            
+            
+            $numCars = count ($this->stackArray[$c]);
+            imageString($image, 6,$x-4, $box[1]-25, $c+1, $colGrid);
+            if (!empty($solutions)) {
+                imageString($image, 6,$x-4, $box[3]+15, $solutions[$c+1], $colGrid);
+            } else {
+                //imageString($image, 6,$x-4, $box[1]-15, $solutions[$c+1], $colGrid);
+            }
 
-        $delta = $this->stackCounts[0][0]-$fsCounts[0][0];
+            foreach ($this->stackArray[$c] as $hCount=>$pos) {
+                $colRailCar = $colActive;
+                if (!empty($solutions) && (($numCars - $hCount) <= $solutions[$c+1])) {
+                    $colRailCar = $colInactive;
+                }
+
+                //echo $hCount," - ", $pos[0], $pos[1], "\n";
+                $y = 50+$box[1]+ $hCount*$hwidth;
+                $rcstr = sprintf("%s%d", chr(ord('A')+$pos[0]), $pos[1]+1);
+                imagefilledellipse($image, $x, $y-30,30,8,$colRailCar);
+                imagefilledellipse($image, $x, $y+30,30,8,$colRailCar);
+                imagefilledrectangle($image, $x-15, $y-30, $x+15, $y+30, $colRailCar);
+
+                //imagerectangle($image, $x-10, $y-8, $x+10, $y+8, $colTextBg);
+
+                imageString($image, 4,$x-7, $y-7, $rcstr, $colText);
+                imagefilledellipse($image, $x, $y-15, 6,6,$colActiveDot);
+                imagefilledellipse($image, $x, $y+15, 6,6,$colActiveDot);
+                
+            }
+        }
+
+        $box = [$this->gLeft, $this->gTableTop, $this->gLeft + ($this->gRight - $this->gLeft)/2 - 10, $this->gHeight - 50];
+        imagerectangle($image, $box[0], $box[1], $box[2], $box[3], $colGrid );
+        imagerectangle($image, $box[0], $box[1] + ($box[3]-$box[1])*1/3, $box[2], $box[1] + ($box[3]-$box[1])*2/3, $colGrid);
+        
+        for ($this->gridXCount as $g) {
+            imageline($imageg, )
+        }
+
+
+
+        $box = [$this->gRight, $this->gTableTop, $this->gLeft + ($this->gRight - $this->gLeft)/2 + 10, $this->gHeight - 50];
+        imagerectangle($image, $box[0], $box[1], $box[2], $box[3], $colGrid );
+        imagerectangle($image, $box[0], $box[1] + ($box[3]-$box[1])*1/3, $box[2], $box[1] + ($box[3]-$box[1])*2/3, $colGrid);
+        
+
+
+//        $delta = $this->stackCounts[0][0]-$fsCounts[0][0];
+        /*
         imagestring($image,4, $box[0] + 0.5*$dwidth, $box[3]+10, $fsCounts[0][0],$delta==0?$colText:$colError);
         imagestring($image,1, $box[0] + 0.5*$dwidth, $box[3]+30, ($delta==0?"":$delta), $colActive);
+
         foreach (range(1, $this->gridXCount-1) as $c) {
             $x = $box[0] + $c*$dwidth;
             imageline($image,$x,$box[1],$x,$box[3], $colGrid);
@@ -128,7 +216,8 @@ class RailCarSolutionVisualizer
             imagestring($image,4, $x + 0.5*$dwidth, $box[3]+10, $fsCounts[0][$c],$delta==0?$colText:$colError);
             imagestring($image,1, $x + 0.5*$dwidth, $box[3]+30, ($delta==0?"":$delta), $colError);
         }
-
+        */
+        /*
         // Y grid
         $dwidth = ($box[3]-$box[1])/$this->gridYCount;
 
@@ -152,12 +241,13 @@ class RailCarSolutionVisualizer
         imageString($image,4, $box[2]+10, $box[3]+10,"$fnValue", $colActive);
         imageString($image,4, $box[0]+10, $box[3]+30,"Iteration $count", $colActive);
 
-
+        */
         $fileName = sprintf("%s_%03d.gif", $this->outfilePrefix, $count);
         
         imagegif($image, $fileName);
         //exit(1);
         //$this->pSolutions = $solutions;
+        
 
     }
 
