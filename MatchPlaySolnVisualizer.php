@@ -17,7 +17,7 @@ $logHandle = fopen($config['logFileName'], 'r');
 $solutions = array();
 $bestSoln = 1000;
 $pcount = 0;
-
+$visualizer->generateGraph(0, $solutions);
 while (!feof($logHandle)) {
     $str = fgets($logHandle);
 
@@ -27,6 +27,7 @@ while (!feof($logHandle)) {
     $count = $arr[0];
     
     if ($pcount > 0 && $pcount != $count) {
+        print(implode(",",$solutions)."\n");
         $visualizer->generateGraph($pcount, $solutions);
 
         print(implode(",",$solutions)."\n");
@@ -98,6 +99,93 @@ class MatchPlaySolutionVisualizer
     {
         global $gX0, $gY0, $gXM, $gYM;
 
+        if ($count>0)
+            list($fsCounts, $fnValue) = $this->stackCounts($solutions);
+
+        $image  = imagecreatetruecolor($this->gWidth, $this->gHeight);
+        imagefilledrectangle($image, 0, 0, $this->gWidth, $this->gHeight, 0xFFFFFF);
+        
+        $colBorder = imagecolorallocate($image, 0,0,0);
+        $colGrid   = imagecolorallocate($image, 128,128,128);
+        $colInactive = imageColorallocate($image, 64,64,64);
+        $colActive  = imagecolorallocate($image, 255,128,0);
+        $colError   = imagecolorallocate($image, 255,0,0);
+        $colText    = imagecolorallocate($image, 0,128,0);
+
+        $box = [$this->gLeft, $this->gTop, $this->gRight, $this->gBottom];
+
+        imagerectangle($image, $box[0], $box[1], $box[2], $box[3], $colBorder);
+
+        // X grid
+        $dwidth = ($box[2]-$box[0])/$this->gridXCount;
+
+        if ($count>0) {
+            $delta = $this->stackCounts[0][0]-$fsCounts[0][0];
+            imagestring($image,4, $box[0] + 0.5*$dwidth, $box[3]+10, $fsCounts[0][0],$delta==0?$colText:$colError);
+            imagestring($image,1, $box[0] + 0.5*$dwidth, $box[3]+30, ($delta==0?"":$delta), $colActive);
+        } else {
+            imagestring($image,4, $box[0] + 0.5*$dwidth, $box[3]+10, $this->stackCounts[0][0], $colText);
+        }
+
+        foreach (range(1, $this->gridXCount-1) as $c) {
+            $x = $box[0] + $c*$dwidth;
+            imageline($image,$x,$box[1],$x,$box[3], $colGrid);
+           
+            if ($count>0) {
+                $delta = $this->stackCounts[0][$c]-$fsCounts[0][$c];
+                imagestring($image,4, $x + 0.5*$dwidth, $box[3]+10, $fsCounts[0][$c],$delta==0?$colText:$colError);
+                imagestring($image,1, $x + 0.5*$dwidth, $box[3]+30, ($delta==0?"":$delta), $colError);
+            } else  {
+                imagestring($image,4, $x + 0.5*$dwidth, $box[3]+10,  $this->stackCounts[0][$c], $colText);
+            }
+        }
+
+        // Y grid
+        $dwidth = ($box[3]-$box[1])/$this->gridYCount;
+
+        if ($count>0) {
+            $delta = $this->stackCounts[1][0]-$fsCounts[1][0];
+            imagestring($image,4, $box[3]+10, $box[2] - 0.5*$dwidth, $fsCounts[1][0],$delta==0?$colText:$colError);
+            imagestring($image,1, $box[3]+25, $box[2] - 0.5*$dwidth+4, ($delta==0?"":$delta), $colActive);
+        } else {
+            imagestring($image,4, $box[3]+10, $box[2] - 0.5*$dwidth, $this->stackCounts[1][0], $colText);
+        }
+        foreach (range(1, $this->gridYCount-1) as $c) {
+            $y = $box[1] + $c*($box[3]-$box[1])/$this->gridYCount;
+            imageline($image,$box[0],$y,$box[2],$y,$colGrid);
+
+            if ($count>0) {
+                $delta = $this->stackCounts[1][$this->gridYCount-$c]-$fsCounts[1][$this->gridYCount-$c];
+                imagestring($image,4, $box[3]+10, $y - 0.5*$dwidth, $fsCounts[1][$this->gridYCount-$c],$delta==0?$colText:$colError);
+                imagestring($image,1, $box[3]+25, $y - 0.5*$dwidth+4, ($delta==0?"":$delta), $colActive);
+            } else {
+                imagestring($image,4, $box[3]+10, $y - 0.5*$dwidth, $this->stackCounts[1][$this->gridYCount-$c] , $colText);
+            }
+
+        }
+
+        foreach(range(0, $this->dimensions-1) as $stackNum){
+            
+            $this->renderStack($image, $box, $stackNum, $count>0 ? $solutions[$stackNum+1] : 0);
+        }
+
+        if ($count>0) {
+            imageString($image,4, $box[2]+10, $box[3]+10,"$fnValue", $colActive);
+            imageString($image,4, $box[0]+10, $box[1]-20,"Iteration $count", $colActive);
+        }
+
+        $fileName = sprintf("%s_%03d.gif", $this->outfilePrefix, $count);
+        
+        imagegif($image, $fileName);
+        //exit(1);
+        //$this->pSolutions = $solutions;
+
+    }
+
+    function generateGraphEmpty($count, $solutions)
+    {
+        global $gX0, $gY0, $gXM, $gYM;
+
         list($fsCounts, $fnValue) = $this->stackCounts($solutions);
 
         $image  = imagecreatetruecolor($this->gWidth, $this->gHeight);
@@ -117,40 +205,40 @@ class MatchPlaySolutionVisualizer
         // X grid
         $dwidth = ($box[2]-$box[0])/$this->gridXCount;
 
-        $delta = $this->stackCounts[0][0]-$fsCounts[0][0];
-        imagestring($image,4, $box[0] + 0.5*$dwidth, $box[3]+10, $fsCounts[0][0],$delta==0?$colText:$colError);
-        imagestring($image,1, $box[0] + 0.5*$dwidth, $box[3]+30, ($delta==0?"":$delta), $colActive);
+        //$delta = $this->stackCounts[0][0]-$fsCounts[0][0];
+        imagestring($image,4, $box[0] + 0.5*$dwidth, $box[3]+10, $fsCounts[0][0],colText);
+        
         foreach (range(1, $this->gridXCount-1) as $c) {
             $x = $box[0] + $c*$dwidth;
             imageline($image,$x,$box[1],$x,$box[3], $colGrid);
 
             $delta = $this->stackCounts[0][$c]-$fsCounts[0][$c];
-            imagestring($image,4, $x + 0.5*$dwidth, $box[3]+10, $fsCounts[0][$c],$delta==0?$colText:$colError);
-            imagestring($image,1, $x + 0.5*$dwidth, $box[3]+30, ($delta==0?"":$delta), $colError);
+            imagestring($image,4, $x + 0.5*$dwidth, $box[3]+10, $fsCounts[0][$c], $colText);
+            //imagestring($image,1, $x + 0.5*$dwidth, $box[3]+30, ($delta==0?"":$delta), $colError);
         }
 
         // Y grid
         $dwidth = ($box[3]-$box[1])/$this->gridYCount;
 
         $delta = $this->stackCounts[1][0]-$fsCounts[1][0];
-        imagestring($image,4, $box[3]+10, $box[2] - 0.5*$dwidth, $fsCounts[1][0],$delta==0?$colText:$colError);
-        imagestring($image,1, $box[3]+25, $box[2] - 0.5*$dwidth+4, ($delta==0?"":$delta), $colActive);
+        imagestring($image,4, $box[3]+10, $box[2] - 0.5*$dwidth, $fsCounts[1][0], $colText);
+        //imagestring($image,1, $box[3]+25, $box[2] - 0.5*$dwidth+4, ($delta==0?"":$delta), $colActive);
         foreach (range(1, $this->gridYCount-1) as $c) {
             $y = $box[1] + $c*($box[3]-$box[1])/$this->gridYCount;
             imageline($image,$box[0],$y,$box[2],$y,$colGrid);
 
             $delta = $this->stackCounts[1][$this->gridYCount-$c]-$fsCounts[1][$this->gridYCount-$c];
-            imagestring($image,4, $box[3]+10, $y - 0.5*$dwidth, $fsCounts[1][$this->gridYCount-$c],$delta==0?$colText:$colError);
-            imagestring($image,1, $box[3]+25, $y - 0.5*$dwidth+4, ($delta==0?"":$delta), $colActive);
+            imagestring($image,4, $box[3]+10, $y - 0.5*$dwidth, $fsCounts[1][$this->gridYCount-$c], $colText);
+            //imagestring($image,1, $box[3]+25, $y - 0.5*$dwidth+4, ($delta==0?"":$delta), $colActive);
             //imagestring($image,1, $box[3]-10, $y - 0.5*$dwidth+4,$this->gridYCount-$c, $colActive);
         }
 
         foreach(range(0, $this->dimensions-1) as $stackNum){
-            $this->renderStack($image, $box, $stackNum, $solutions[$stackNum+1]);
+            $this->renderStack($image, $box, $stackNum, 0);
         }
 
-        imageString($image,4, $box[2]+10, $box[3]+10,"$fnValue", $colActive);
-        imageString($image,4, $box[0]+10, $box[3]+30,"Iteration $count", $colActive);
+       // imageString($image,4, $box[2]+10, $box[3]+10,"$fnValue", $colActive);
+       // imageString($image,4, $box[0]+10, $box[1]-20,"Iteration $count", $colActive);
 
 
         $fileName = sprintf("%s_%03d.gif", $this->outfilePrefix, $count);
@@ -211,6 +299,7 @@ class MatchPlaySolutionVisualizer
              // Head
             imagefilledellipse($image, $coords[0], $coords[1], 30, 30, $colF);
             imageellipse($image, $coords[0], $coords[1], 30, 30, $col);
+            imagestring($image, 2,$coords[0]-2, $coords[1]-5, ($stackNum+1), $colText);
             
         } elseif ($part == 0) {
             imagefilledrectangle($image, $coords[0] - $boxThickX - $boxWidthX/2, $coords[1] - $boxThickY - $boxWidthY/2, 
@@ -227,7 +316,7 @@ class MatchPlaySolutionVisualizer
             imagerectangle($image, $coords[0]-$boxThickX, $coords[1]-$boxThickY, 
                   ($coords[0] + $pCoords[0])/2.0+$boxThickX, ($coords[1] + $pCoords[1])/2.0+$boxThickY, $col);
         }
-       // imagestring($image, 2,$coords[0], $coords[1], $stackNum, $colText);
+        
         
     }
 
