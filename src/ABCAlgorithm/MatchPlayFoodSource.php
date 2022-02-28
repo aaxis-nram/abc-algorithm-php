@@ -54,6 +54,7 @@ class MatchPlayFoodSource extends AbstractFoodSource
         
         // Stack config
         $stacks = self::$stackArray;
+
         $stackCounts = self::$stackCounts;
         $dimensions = $this->getDimensions();
         $fsCount = array();
@@ -64,6 +65,7 @@ class MatchPlayFoodSource extends AbstractFoodSource
         // Calcualate how off are we in terms of Row and Col usage
         foreach (range(0, $dimensions - 1) as $dim) {
             $burnVal = $this->getBurnVal($dim);
+            //echo $burnVal,":";
             if ($burnVal > 0) {
                 foreach (range(0, $burnVal - 1) as $sNum) {
                     if ($sNum < count($stacks[$dim])) {
@@ -73,9 +75,11 @@ class MatchPlayFoodSource extends AbstractFoodSource
                     }
                 }
             }
+
         }
         
-
+        //print_r($fsCount);
+        //exit(1);
         // RMS Difference between R & C values
         foreach (range(0,1) as $c) {
             foreach (range(0, count($fsCount[$c]) - 1) as $rNum) {

@@ -14,6 +14,7 @@ $visualizer = new RailCarSolutionVisualizer($config);
 
 $logHandle = fopen($config['logFileName'], 'r');
 $maxObjFnToVis = $config['Visualizer']['maxObjFnToVis'];
+$lastCycle =  $config['BeeColony']['maxCycles'];
 
 $solutionsReviewed = array();
 
@@ -24,23 +25,34 @@ $solCount++;
 
 $dim = $visualizer->dimensions;
 
-
+$solnArr = [];
+$prevIter = 0;
 while (!feof($logHandle)) {
     $str = fgets($logHandle);
 
     if (empty($str)) break;
 
-    $solnstr = substr($str, strpos($str,','));
-    
-    if (!array_key_exists($solnstr, $solutionsReviewed)) {
-        $solutionsReviewed[$solnstr] = 1;
+    //$solnstr = substr($str, strpos($str,','));
+    $iter = substr($str, 0, strpos($str,','));
+    //echo $iter," ", $lastCycle,"\n";
+    if ($iter == $lastCycle) {
+
         $arr = explode(",", $str);
-        $objFn = intval($arr[$dim-1]);       
-        if ($objFn <= $maxObjFnToVis) {
-            $visualizer->generateGraph($solCount, $arr);
-            $solCount++;
-        }
+        array_push($solnArr, $arr);       
     }
+}
+
+function cmpByFn($a, $b) {
+    global $dim;
+    return $a[$dim+1] == $b[$dim+1] ? 0 : ($a[$dim+1] < $b[$dim+1] ? -1 : 1);
+}
+
+uasort($solnArr, 'cmpByFn');
+$solnArr = array_slice($solnArr, 0, 4);
+
+foreach ($solnArr as $k=>$s) {
+    echo "Generating for $k ". implode(",", $s)."\n";
+    $visualizer->generateGraph($k+1 ,$s);
 }
 
 /*
@@ -164,8 +176,8 @@ class RailCarSolutionVisualizer
             } else {
                 //imageString($image, 6,$x-4, $box[1]-15, $solutions[$c+1], $colGrid);
             }
-
-            foreach ($this->stackArray[$c] as $hCount=>$pos) {
+            $revStack = array_reverse($this->stackArray[$c], false);
+            foreach ($revStack as $hCount=>$pos) {
                 $colRailCar = $colActive;
                 if (!empty($solutions) && (($numCars - $hCount) <= $solutions[$c+1])) {
                     $colRailCar = $colInactive;
@@ -188,18 +200,18 @@ class RailCarSolutionVisualizer
         }
 
         $box = [$this->gLeft, $this->gTableTop, $this->gLeft + ($this->gRight - $this->gLeft)/2 - 10, $this->gHeight - 50];
-        imagerectangle($image, $box[0], $box[1], $box[2], $box[3], $colGrid );
-        imagerectangle($image, $box[0], $box[1] + ($box[3]-$box[1])*1/3, $box[2], $box[1] + ($box[3]-$box[1])*2/3, $colGrid);
+        //imagerectangle($image, $box[0], $box[1], $box[2], $box[3], $colGrid );
+        //imagerectangle($image, $box[0], $box[1] + ($box[3]-$box[1])*1/3, $box[2], $box[1] + ($box[3]-$box[1])*2/3, $colGrid);
         
-        for ($this->gridXCount as $g) {
-            imageline($imageg, )
-        }
+        //foreach ($this->gridXCount as $g) {
+        //    imageline($imageg, 1);
+        // }
 
 
 
         $box = [$this->gRight, $this->gTableTop, $this->gLeft + ($this->gRight - $this->gLeft)/2 + 10, $this->gHeight - 50];
-        imagerectangle($image, $box[0], $box[1], $box[2], $box[3], $colGrid );
-        imagerectangle($image, $box[0], $box[1] + ($box[3]-$box[1])*1/3, $box[2], $box[1] + ($box[3]-$box[1])*2/3, $colGrid);
+        //imagerectangle($image, $box[0], $box[1], $box[2], $box[3], $colGrid );
+        //imagerectangle($image, $box[0], $box[1] + ($box[3]-$box[1])*1/3, $box[2], $box[1] + ($box[3]-$box[1])*2/3, $colGrid);
         
 
 
@@ -245,6 +257,122 @@ class RailCarSolutionVisualizer
         $fileName = sprintf("%s_%03d.gif", $this->outfilePrefix, $count);
         
         imagegif($image, $fileName);
+
+        // Print out Counts by Manufacturer and Brand
+        if (!empty($solutions)) {
+            echo "FOR: $fileName  $this->dimensions\n";
+            $prods = [];
+            $manufs = [];
+            foreach ($this->stackCounts[0] as $p=>$v) {
+                $prod = chr(ord('A') + $p);
+                $prods [$prod] = 0;
+            }
+            foreach ($this->stackCounts[1] as $p=>$v) {
+                $manufs [$p+1] = 0;
+            }
+            foreach ($solutions as $t=>$carsRemoved) {
+                if ($t==0 || $t>$this->dimensions) continue;
+                $track = $t-1;
+                $carCount = count($this->stackArray[$track]);
+                printf(" %2d :", $track+1);
+                for($c = 0; $c <$carsRemoved; $c++ ) {
+                    $product = chr(ord('A') + $this->stackArray[$track][$c][0]);
+                    $manuf = $this->stackArray[$track][$c][1]+1;
+                    $prods[$product] ++;
+                    $manufs[$manuf] ++;
+                    printf("%s%d:", $product, $manuf);
+
+                }
+                echo "\n";
+            }
+            
+            // Print out Products
+            $strOut = [
+                "╔════════════════╦", // 0
+                "║ Product        ║", // 1
+                "╠════════════════╬", // 2
+                "║ Orders         ║", // 3
+                "╠════════════════╬", // 4
+                "║ Actual         ║", // 5
+                "╠════════════════╬", // 6
+                "║ Error          ║", // 7
+                "╚════════════════╩"  // 8
+            ];
+            $last = count($this->stackCounts[0])-1;
+            foreach ($this->stackCounts[0] as $pc=>$v) {
+                $p = chr(ord('A') + $pc);
+                if ($pc!=$last) {
+                    $strOut[0] .= "═══╦";
+                    $strOut[2] = $strOut[4] = $strOut[6] = $strOut[2] . "═══╬";
+                    $strOut[8] .= "═══╩";
+                } else {
+                    $strOut[0] .= "═══╗";
+                    $strOut[2] = $strOut[4] = $strOut[6] = $strOut[2] . "═══╣";
+                    $strOut[8] .= "═══╝";
+                }
+
+                // Label 1
+                $strOut[1] .= " $p ║";
+
+                // Ideal 3
+                $strOut[3] .= " $v ║";
+
+                // Actual 5
+                $strOut[5] .= " ".$prods[$p]." ║";
+
+                // Error 7
+                $strOut[7] .= sprintf("%2d ║", $v - $prods[$p]);
+            }
+            foreach ($strOut as $s) {
+                echo $s,"\n";
+            }
+            echo "\n";
+
+            // Pring out Manufacturers
+            $strOut = [
+                "╔════════════════╦", // 0
+                "║ Manufacturer   ║", // 1
+                "╠════════════════╬", // 2
+                "║ Commitment     ║", // 3
+                "╠════════════════╬", // 4
+                "║ Actual         ║", // 5
+                "╠════════════════╬", // 6
+                "║ Error          ║", // 7
+                "╚════════════════╩"  // 8
+            ];
+            $last = count($this->stackCounts[1])-1;
+            foreach ($this->stackCounts[1] as $pc=>$v) {
+                $p = $pc+1;
+                if ($pc!=$last) {
+                    $strOut[0] .= "═══╦";
+                    $strOut[2] = $strOut[4] = $strOut[6] = $strOut[2] . "═══╬";
+                    $strOut[8] .= "═══╩";
+                } else {
+                    $strOut[0] .= "═══╗";
+                    $strOut[2] = $strOut[4] = $strOut[6] = $strOut[2] . "═══╣";
+                    $strOut[8] .= "═══╝";
+                }
+
+                // Label 1
+                $strOut[1] .= " $p ║";
+
+                // Ideal 3
+                $strOut[3] .= " $v ║";
+
+                // Actual 5
+                $strOut[5] .= " ".$manufs[$p]." ║";
+
+                // Error 7
+                $strOut[7] .= sprintf("%2d ║", $v - $manufs[$p]);
+            }
+            foreach ($strOut as $s) {
+                echo $s,"\n";
+            }
+            echo "\n";
+
+
+        }
+
         //exit(1);
         //$this->pSolutions = $solutions;
         

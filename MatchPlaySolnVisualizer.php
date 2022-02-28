@@ -171,7 +171,7 @@ class MatchPlaySolutionVisualizer
 
         if ($count>0) {
             imageString($image,4, $box[2]+10, $box[3]+10,"$fnValue", $colActive);
-            imageString($image,4, $box[0]+10, $box[1]-20,"Iteration $count", $colActive);
+            imageString($image,4, $box[0]+10, $box[1]-20,"Solution $count", $colActive);
         }
 
         $fileName = sprintf("%s_%03d.gif", $this->outfilePrefix, $count);
