@@ -51,6 +51,9 @@ class SolutionVisualizer
 
     private $gWidth, $gHeight;
     private $outfilePrefix, $templateFile;
+    private $colActiveX, $colActiveY;
+    private $colInactiveX, $colInactiveY;
+
 
     private $numCount = 0;
 
@@ -72,6 +75,14 @@ class SolutionVisualizer
         $this->outfilePrefix = $config['Visualizer']['outfilePrefix'];
         $this->templateFile  = $config['Visualizer']['templateFile'];
 
+        $this->colActiveX   = $config['Visualizer']['colActiveX'];
+        $this->colActiveY   = $config['Visualizer']['colActiveY'];
+        
+        $this->colInactiveX = $config['Visualizer']['colInactiveX'];
+        $this->colInactiveY = $config['Visualizer']['colInactiveY'];
+    
+        $this->colWhiteX = $config['Visualizer']['colWhiteX'];
+        $this->colWhiteY = $config['Visualizer']['colWhiteY'];
     }
 
     private $pSolutions = array();
@@ -95,17 +106,28 @@ class SolutionVisualizer
         */
 
         // CrossinTray colors
+        /* for Sphere
         $colActive   = imagecolorat($image, 474, 355);
         $colInactive = imagecolorat($image, 474, 282);
         $colMove = imagecolorat($image, 474, 355);
         $colGrid = imagecolorat($image, 474, 89);
+        */
 
+        // For Rastrigin
+        $colActive   = imagecolorat($image, $this->colActiveX, $this->colActiveY);
+        $colInactive = imagecolorat($image, $this->colInactiveX, $this->colInactiveY);
+        $colMove    = imagecolorat($image, $this->colActiveX, $this->colActiveY);
+
+        $white      = imagecolorat($image, $this->colWhiteX, $this->colWhiteY);
+
+        //$colGrid = imagecolorat($image, 525, 450);
+        
 
         //$dorange = ImageColorAllocate($image, 128, 0, 0);
         //$orange = ImageColorAllocate($image, 128 + 64, 64, 64);
         //$lorange = ImageColorAllocate($image, 255, 128, 128);
 
-        //$white  = ImageColorAllocate($image, 255, 255, 255);
+        //
         //$black  = ImageColorAllocate($image, 0, 0, 0);
 
 
@@ -164,8 +186,11 @@ class SolutionVisualizer
             imagestring($image, 5, $this->gWidth / 2 - 20, $this->gHeight / 2, "START", $colBorder);
         }
 
-        imagestring($image, 3, 10, $this->gHeight - 20, "Cycle $count", $colBorder);
-        imagestring($image, 3, $this->gWidth-120, $this->gHeight - 20, "aaxisdigital.com", $colBorder);
+
+        imagefilledrectangle($image, 25, 28, 60, 47, $white);
+        imagestring($image, 5, 30, 30,  "$count", $colBorder);
+
+        //imagestring($image, 3, $this->gWidth-120, $this->gHeight - 20, "aaxisdigital.com", $colBorder);
         $fileName = sprintf("%s_%03d.gif", $this->outfilePrefix, $count);
 
         imagegif($image, $fileName);

@@ -44,4 +44,5 @@ Run
 <pre>
 php ./NumericalSolnVisualizer.php configCrossInTray.ini  
 gifsicle --loopcount=forever --delay=25 out/crossintray_* --colors 256 > final/crossintray-soln.gif
+"c:\Program Files\ImageMagick-7.0.11-Q16-HDRI\magick.exe" "convert"  "-delay" 25 "-loop" 0 "out\sphere-2d_*.gif" "sphere-anim.gif"
 </pre>

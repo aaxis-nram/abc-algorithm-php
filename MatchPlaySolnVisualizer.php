@@ -17,38 +17,53 @@ $logHandle = fopen($config['logFileName'], 'r');
 $solutions = array();
 $bestSoln = 1000;
 $pcount = 0;
-$visualizer->generateGraph(0, $solutions);
-while (!feof($logHandle)) {
-    $str = fgets($logHandle);
+//$hasSeenValFn = array();
 
+while (!feof($logHandle)) {
+    
+    $str = fgets($logHandle);
     if (empty($str)) break;
+    $str = preg_replace("/^\d+,/","",$str);
+
+    preg_match("/,(\d+)\s*$/", $str, $strmat);
+    $val = str_pad($strmat[1], 4, '0', STR_PAD_LEFT);
+    $str = $val.",".$str;
+    
+    if (!in_array($val, $solutions)){
+        array_push($solutions, $str);
+        // array_push($hasSeenValFn, $val);
+    }
+}
+
+rsort($solutions);
+$count =0;
+$finalSolutions = array();
+
+$visualizer->generateGraph(0, $solutions);
+$prevFn = 99999;
+foreach ($solutions as $str) {
 
     $arr = explode(",", $str);
-    $count = $arr[0];
-    
-    if ($pcount > 0 && $pcount != $count) {
-        print(implode(",",$solutions)."\n");
-        $visualizer->generateGraph($pcount, $solutions);
-
-        print(implode(",",$solutions)."\n");
-        print("BEST = $bestSoln\n");
-        $solutions = array();
-        $bestSoln = 1000;
-        //exit(1);
+    $valFn = end($arr);
+    //$count = $arr[0];
+    if ($valFn<$prevFn) {
+        $count++;
+        $visualizer->generateGraph($count, $arr);
+        $finalSolutions = array();
+        $prevFn = $valFn;
+    } else {
+        if (!in_array($str, $finalSolutions)){
+            array_push($finalSolutions, $str);
+        }
     }
-    $dim = count($arr);
-    //print_r($arr);
-    $soln = intval($arr[$dim-1]);
-    //print "$dim :$arr[16]: ". $arr[$dim-1]." < $bestSoln = " . ( $arr[$dim-1] < $bestSoln )."\n";
-    if ($soln < $bestSoln) {
-        $solutions = $arr;
-        $bestSoln = $arr[$dim-1];
-        //print "--- " . implode(":",$arr);
-    } 
-    $pcount = $count;
-
 }
-$visualizer->generateGraph($pcount, $solutions);
+
+// Print the other final solutions
+foreach ($finalSolutions as $str) {
+    $arr = explode(",", $str);
+    $count++;
+    $visualizer->generateGraph($count, $arr);
+}
 
 fclose($logHandle);
 
@@ -150,16 +165,16 @@ class MatchPlaySolutionVisualizer
         } else {
             imagestring($image,4, $box[3]+10, $box[2] - 0.5*$dwidth, $this->stackCounts[1][0], $colText);
         }
-        foreach (range(1, $this->gridYCount-1) as $c) {
+        foreach (range(1, $this->gridYCount) as $c) {
             $y = $box[1] + $c*($box[3]-$box[1])/$this->gridYCount;
             imageline($image,$box[0],$y,$box[2],$y,$colGrid);
 
             if ($count>0) {
                 $delta = $this->stackCounts[1][$this->gridYCount-$c]-$fsCounts[1][$this->gridYCount-$c];
-                imagestring($image,4, $box[3]+10, $y - 0.5*$dwidth, $fsCounts[1][$this->gridYCount-$c],$delta==0?$colText:$colError);
-                imagestring($image,1, $box[3]+25, $y - 0.5*$dwidth+4, ($delta==0?"":$delta), $colActive);
+                imagestring($image,4, $box[2]+10, $y - 0.5*$dwidth, $fsCounts[1][$this->gridYCount-$c],$delta==0?$colText:$colError);
+                imagestring($image,1, $box[2]+25, $y - 0.5*$dwidth+4, ($delta==0?"":$delta), $colActive);
             } else {
-                imagestring($image,4, $box[3]+10, $y - 0.5*$dwidth, $this->stackCounts[1][$this->gridYCount-$c] , $colText);
+                imagestring($image,4, $box[2]+10, $y - 0.5*$dwidth, $this->stackCounts[1][$this->gridYCount-$c] , $colText);
             }
 
         }

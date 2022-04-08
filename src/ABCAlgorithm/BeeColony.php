@@ -36,7 +36,7 @@ class BeeColony
     {
         $colonyConfig = $config['BeeColony'];
         $config['FoodSource']['logFileName'] = $config['logFileName'];
-
+        
         $this->setPropertyIfNotEmpty($colonyConfig['maxCycles'], 'setMaxCycles')
             ->setPropertyIfNotEmpty($colonyConfig['colonySize'], 'setColonySize')
             ->setPropertyIfNotEmpty($colonyConfig['numSolutions'], 'setNumSolutions')

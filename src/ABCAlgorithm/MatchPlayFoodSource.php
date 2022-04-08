@@ -65,7 +65,7 @@ class MatchPlayFoodSource extends AbstractFoodSource
         // Calcualate how off are we in terms of Row and Col usage
         foreach (range(0, $dimensions - 1) as $dim) {
             $burnVal = $this->getBurnVal($dim);
-            //echo $burnVal,":";
+
             if ($burnVal > 0) {
                 foreach (range(0, $burnVal - 1) as $sNum) {
                     if ($sNum < count($stacks[$dim])) {
@@ -114,8 +114,11 @@ class MatchPlayFoodSource extends AbstractFoodSource
             $thisStackCells = 0;
             foreach ($splitEnvRow as $splitEnvCell) {
                 $cell = array();
+                // Break the A, B, C, etc to 0,1,2 so it is easier to process
                 array_push($cell, ord($splitEnvCell[0]) - ord('A'));
+                // Convert chars 1,2,3 into 0,1,3
                 array_push($cell, ord($splitEnvCell[1]) - ord('1'));
+                // Now save this cell config
                 array_push($row, $cell);
                 $thisStackCells++;
 
@@ -128,15 +131,10 @@ class MatchPlayFoodSource extends AbstractFoodSource
         
         $config['dimensions'] = $dimensions;
         
-        /*
-        $config['upperLimit'] = $upperLimit;
-        $config['lowerLimit'] = 0;
-        */
-
+        // Save the R and C Counts
         self::$stackCounts[0] = explode(",", $config['rCounts']);
         self::$stackCounts[1] = explode(",", $config['cCounts']);
 
-        //print_r($this->stackArray);
     }
 
     public function generateIdentifier():string {
